@@ -39,7 +39,8 @@ def solve_lp(
     net: Optional[np.ndarray] = None,
     eps: float = 0.5,
     delta: float = 1e-6,
-) -> np.ndarray | None:
+    return_result: bool = False,
+) -> np.ndarray | linprog.OptimizeResult | None:
     """
     Resuelve el LP para el horizonte de H horas.
 
@@ -78,7 +79,7 @@ def solve_lp(
     if has_forecast:
         for k in range(H):
             n_val = net[k] if k < len(net) else np.nan
-            if np.isfinite(n_val) and n_val < P_MAX and n_val > 0:
+            if np.isfinite(n_val) and n_val < P_MAX:
                 pos = len(g_indices)
                 g_order[k] = pos
                 g_indices.append(k)
@@ -214,6 +215,8 @@ def solve_lp(
     )
 
     if result.success:
+        if return_result:
+            return result
         return result.x
     return None
 
@@ -225,9 +228,11 @@ def compute_weights(
     co2: np.ndarray,
     price: np.ndarray,
     kappa: float,
+    w_co2: float = 0.7,
+    w_cost: float = 0.3,
 ) -> np.ndarray:
     """
-    Calcula el vector de pesos w' = 0.7·co2 + 0.3·κ·price.
+    Calcula el vector de pesos w' = w_co2·co2 + w_cost·κ·price.
 
     Parámetros
     ----------
@@ -242,7 +247,7 @@ def compute_weights(
     --------
     np.ndarray de longitud H
     """
-    return 0.7 * co2 + 0.3 * kappa * price
+    return w_co2 * co2 + w_cost * kappa * price
 
 
 def compute_terminal_value(
@@ -340,8 +345,7 @@ def get_dual_marginals(
     np.ndarray | None
         Vector de duales de longitud H, o None si falla.
     """
-    result = solve_lp(w, s0, V, net, eps, delta)
+    result = solve_lp(w, s0, V, net, eps, delta, return_result=True)
     if result is None:
         return None
-    # HiGHS devuelve duals de igualdades en res.eqlin.marginals
-    return None  # Placeholder: no accesible desde linprog resultado directo
+    return -np.asarray(result.eqlin.marginals, dtype=np.float64)

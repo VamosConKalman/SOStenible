@@ -49,34 +49,40 @@ class SandboxAgent:
         self._agent_cls = _agent_mod.BatteryAgent
 
         class PatchedAgent(_agent_mod.BatteryAgent):
-            def __init__(__self__):
-                __self__._path = SRC_DIR
-                __self__._params = p
+            def __init__(self):
+                self._path = SRC_DIR
+                self._params = p
 
-                __self__.kappa = float(p.get("kappa", 0.55))
-                __self__.q = float(p.get("q", 0.5))
-                __self__.eps = float(p.get("eps", 0.5))
-                __self__.delta = float(p.get("delta", 1e-6))
-                __self__.w_co2 = float(p.get("w_co2", 0.7))
-                __self__.w_cost = float(p.get("w_cost", 0.3))
-                __self__.use_forecaster = bool(p.get("use_forecaster", False))
+                self.kappa = float(p.get("kappa", 0.55))
+                self.q = float(p.get("q", 0.5))
+                self.eps = float(p.get("eps", 0.5))
+                self.delta = float(p.get("delta", 1e-6))
+                self.w_co2 = float(p.get("w_co2", 0.7))
+                self.w_cost = float(p.get("w_cost", 0.3))
+                self.forecaster_quantile = float(
+                    p.get("forecaster_quantile", 0.5)
+                )
+                self.use_forecaster = bool(p.get("use_forecaster", False))
                 v_coef_raw = p.get("v_coef")
-                __self__.v_coef = (
+                self.v_coef = (
                     tuple(float(v) for v in v_coef_raw)
                     if v_coef_raw is not None
                     else None
                 )
 
-                __self__.eta_c = _lp.ETA_C
-                __self__.eta_d = _lp.ETA_D
-                __self__.p_max = _lp.P_MAX
-                __self__.e_max = _lp.E_MAX
-                __self__.history = []
-                __self__.net_forecast = None
-                __self__.n_forecast_fail = 0
-                __self__.n_fail = 0
-                __self__.last_info = {}
-                __self__._forecaster = None
+                self.eta_c = _lp.ETA_C
+                self.eta_d = _lp.ETA_D
+                self.p_max = _lp.P_MAX
+                self.e_max = _lp.E_MAX
+                self.history = []
+                self.net_forecast = None
+                self.n_forecast_fail = 0
+                self.n_fail = 0
+                self.n_index_shift = 0
+                self.period_end_override = None
+                self.last_info = {}
+                self._forecaster = None
+                self._last_ts = None
 
         self._agent = PatchedAgent()
 
@@ -124,6 +130,8 @@ class TestActBasic:
         obs = {
             "timestamp": "2026-01-05 12:00:00",
             "soc_kwh": 1000.0,
+            "preu_actual": 0.15,
+            "co2_actual": 0.06,
             "preus_properes_24h": [0.15] * 24,
             "co2_properes_24h": [0.06] * 24,
             "noves_dades_5min": {
@@ -140,6 +148,8 @@ class TestActBasic:
         obs = {
             "timestamp": "2026-01-05 12:00:00",
             "soc_kwh": 1000.0,
+            "preu_actual": 0.15,
+            "co2_actual": 0.06,
             "preus_properes_24h": [0.15, 0.16, 0.17],
             "co2_properes_24h": [0.06, 0.07, 0.08],
             "noves_dades_5min": {
@@ -159,6 +169,8 @@ class TestHorizon:
         obs = {
             "timestamp": "2026-01-05 12:00:00",
             "soc_kwh": 1000.0,
+            "preu_actual": 0.15,
+            "co2_actual": 0.06,
             "preus_properes_24h": [0.15] * 24,
             "co2_properes_24h": [0.06] * 24,
         }
@@ -169,6 +181,8 @@ class TestHorizon:
         obs = {
             "timestamp": "2026-01-05 12:00:00",
             "soc_kwh": 1000.0,
+            "preu_actual": 0.15,
+            "co2_actual": 0.06,
             "preus_properes_24h": [0.15] * 12,
             "co2_properes_24h": [0.06] * 12,
         }

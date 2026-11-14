@@ -12,6 +12,7 @@ La clase es ligera (< 10 ms de predict).
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 from forecaster_base import NetLoadForecaster
 from typing import Optional
 
@@ -66,7 +67,7 @@ class MeanByDayHourForecaster(NetLoadForecaster):
             if not np.isfinite(net_val):
                 continue
             ts = timestamps[i]
-            key = (ts.hour, ts.dayofweek)
+            key = (ts.hour, ts.day_of_week)
             if key not in self._slot_means:
                 self._slot_means[key] = []
                 self._counts[key] = 0
@@ -94,7 +95,7 @@ class MeanByDayHourForecaster(NetLoadForecaster):
             try:
                 ts_k = pd.Timestamp(obs["timestamp"]) + pd.Timedelta(hours=k)
                 hour = ts_k.hour
-                dow = ts_k.dayofweek
+                dow = ts_k.day_of_week
             except Exception:
                 continue
 
@@ -120,48 +121,5 @@ class MeanByDayHourForecaster(NetLoadForecaster):
 
 
 # ---------------------------------------------------------------------------
-# Compatibilidad: importar pandas dentro de predict para no requerirlo en init
+# Predicció con persistència i mitjanes per slot (hour, day_of_week).
 # ---------------------------------------------------------------------------
-def _import_pandas():
-    import pandas as pd
-    return pd
-
-
-# Patch MeanByDayHourForecaster.predict to use pandas
-_original_predict = MeanByDayHourForecaster.predict
-
-
-def _patched_predict(
-    self,
-    obs: dict,
-    history: list[tuple],
-    horizon: int,
-) -> np.ndarray:
-    import pandas as pd
-
-    result = np.full(horizon, np.nan, dtype=np.float64)
-
-    for k in range(horizon):
-        try:
-            ts_k = pd.Timestamp(obs["timestamp"]) + pd.Timedelta(hours=k)
-            hour = ts_k.hour
-            dow = ts_k.dayofweek
-        except Exception:
-            continue
-
-        key = (hour, dow)
-        mean_val = self._get_mean(key)
-
-        if k == 0 and self._use_persistence and history:
-            last_ts, last_net = history[-1]
-            if np.isfinite(last_net):
-                result[0] = last_net
-                continue
-
-        if np.isfinite(mean_val):
-            result[k] = mean_val
-
-    return result
-
-
-MeanByDayHourForecaster.predict = _patched_predict
