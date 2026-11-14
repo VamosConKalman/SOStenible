@@ -1,0 +1,10 @@
+services:
+  scenario-api:
+    build: .
+    ports: ["8000:8000"]
+    volumes:
+      - ./artifacts:/app/artifacts
+      - ./data/train:/data/train:ro        # CSV oficials del repte (contador, inversor, precio_pvpc, co2_red)
+    environment:
+      MAX_PATHS: "20000"
+      DEFAULT_HORIZON: "24"
