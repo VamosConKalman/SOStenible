@@ -1,0 +1,37 @@
+:root {
+  --upc: #007bc0;
+  --upc-dark: #004e7a;
+  --green: #58a532;
+  --green-dark: #3e8e2a;
+  --green-tint: #e9f3e2;
+  --ink: #141414;
+  --ink-2: #4b4b4b;
+  --muted: #8a8a85;
+  --line: #d9d7ce;
+  --paper: #f5f4ee;
+  --white: #ffffff;
+  --good: #3e8e2a;
+  --warn: #d98a00;
+  --bad: #c8372d;
+  --solar: #e0a100;
+  --battery: #3e8e2a;
+  --charge: #8a5cc2;
+  --display: "Montserrat", Arial, sans-serif;
+  --body: Arial, "Helvetica Neue", Helvetica, sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+body {
+  font-family: var(--body);
+  background: var(--paper);
+  color: var(--ink);
+  line-height: 1.5;
+  font-size: 16px;
+}
+#root { min-height: 100vh; }
+button { font: inherit; cursor: pointer; color: inherit; }
+button:disabled { opacity: 0.35; cursor: default; }
+a { color: var(--upc); }
+code { background: var(--white); border: 1px solid var(--line); padding: 1px 6px; }
+:focus-visible { outline: 3px solid var(--upc); outline-offset: 2px; }

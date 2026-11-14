@@ -1,97 +1,25 @@
-function About() {
+import { Link } from "react-router-dom";
+
+export default function About() {
   return (
-    <div className="page">
-
-      <div className="hero">
-
-        <h1>
-          UPC Sustainable Battery Optimization Challenge
-        </h1>
-
-        <p className="hero-subtitle">
-          Transforming energy data into actionable decisions.
-        </p>
-
-      </div>
-
-      <div className="info-card">
-
-        <h2>Challenge Overview</h2>
-
+    <main className="wrap narrow">
+      <section className="level">
+        <p className="kicker dark">El repte</p>
+        <h1 className="page-title">Datathon UPC Sostenible 2026</h1>
         <p>
-          This project has been developed as part of the UPC Sustainable
-          Datathon, a collaborative event where multidisciplinary teams
-          work on real sustainability challenges through data analysis,
-          visualization and optimization.
+          El Campus Nord té una planta fotovoltaica i una bateria de 2 MWh. El repte demana decidir, hora a hora,
+          quan carregar-la, quan descarregar-la i quan deixar-la en repòs per reduir les emissions de CO₂ (70 %)
+          i el cost de l'electricitat (30 %), sense saber amb certesa què passarà l'endemà.
         </p>
-
-        <p>
-          Participants are asked to design and evaluate battery operating
-          strategies capable of improving sustainability outcomes in a
-          university campus environment.
-        </p>
-
-      </div>
-
-      <div className="info-card">
-
-        <h2>Objective</h2>
-
-        <p>
-          The challenge focuses on determining when a battery should charge,
-          discharge or remain idle in order to achieve the best possible
-          environmental and economic performance.
-        </p>
-
-        <p>
-          Optimization follows a weighted objective:
-        </p>
-
-        <ul>
-          <li>70% Reduction of CO₂ emissions</li>
-          <li>30% Reduction of electricity costs</li>
-        </ul>
-
-      </div>
-
-      <div className="info-card">
-
-        <h2>Data Sources</h2>
-
-        <p>
-          The optimization model combines different datasets representing
-          energy behaviour and external conditions.
-        </p>
-
-        <ul>
-          <li>Campus electricity demand</li>
-          <li>Photovoltaic generation</li>
-          <li>Electricity market prices</li>
-          <li>Grid carbon intensity indicators</li>
-          <li>Battery operating constraints</li>
-        </ul>
-
-      </div>
-
-      <div className="info-card">
-
-        <h2>Purpose of this Platform</h2>
-
-        <p>
-          This web platform converts raw energy data into visual information
-          designed to support decision making.
-        </p>
-
-        <p>
-          Rather than displaying only numerical values, the platform
-          highlights operational patterns, emissions impacts and economic
-          trade-offs associated with battery operation.
-        </p>
-
-      </div>
-
-    </div>
+        <p>Aquest web té un doble objectiu: optimitzar una bateria real i fer visible la transició energètica de la universitat a tota la comunitat.</p>
+        <ol className="about-levels">
+          <li><b>Entén</b> el sistema energètic del campus.</li>
+          <li><b>Juga</b> a prendre decisions com la persona responsable de la bateria.</li>
+          <li><b>Analitza</b> com les dades i els algorismes redueixen emissions i costos.</li>
+          <li><b>Comunitat:</b> la tecnologia sola no n'hi ha prou.</li>
+        </ol>
+        <p><Link to="/">← Torna al panell</Link></p>
+      </section>
+    </main>
   );
 }
-
-export default About;

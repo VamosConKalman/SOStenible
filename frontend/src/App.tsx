@@ -1,29 +1,19 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-
-import Dashboard from "./pages/Dashboard";
-import BatteryMonitor from "./pages/BatteryMonitor";
+import Header from "./components/layout/Header";
+import Home from "./pages/Home";
 import About from "./pages/About";
-
-import Sidebar from "./components/Sidebar";
-
+import "@fontsource/montserrat/800.css";
+import "@fontsource/montserrat/900.css";
 import "./App.css";
 
-function App() {
+export default function App() {
   return (
     <BrowserRouter>
-      <div className="layout">
-        <Sidebar />
-
-        <main className="main-content">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/battery" element={<BatteryMonitor />} />
-            <Route path="/about" element={<About />} />
-          </Routes>
-        </main>
-      </div>
+      <Header />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/projecte" element={<About />} />
+      </Routes>
     </BrowserRouter>
   );
 }
-
-export default App;
