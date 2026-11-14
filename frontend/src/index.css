@@ -1,14 +1,16 @@
 :root {
   --upc: #007bc0;
   --upc-dark: #004e7a;
+  --upc-tint: #e8f2f9;
   --green: #58a532;
   --green-dark: #3e8e2a;
-  --green-tint: #e9f3e2;
-  --ink: #141414;
-  --ink-2: #4b4b4b;
-  --muted: #8a8a85;
-  --line: #d9d7ce;
-  --paper: #f5f4ee;
+  --green-tint: #eef6e8;
+  --ink: #1f2a30;
+  --ink-2: #4f5b62;
+  --muted: #8a949a;
+  --line: #e4e2da;
+  --line-2: #d6d3c8;
+  --paper: #f7f6f2;
   --white: #ffffff;
   --good: #3e8e2a;
   --warn: #d98a00;
@@ -16,22 +18,18 @@
   --solar: #e0a100;
   --battery: #3e8e2a;
   --charge: #8a5cc2;
+  --radius: 16px;
   --display: "Montserrat", Arial, sans-serif;
   --body: Arial, "Helvetica Neue", Helvetica, sans-serif;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html { scroll-behavior: smooth; scroll-padding-top: 76px; }
-body {
-  font-family: var(--body);
-  background: var(--paper);
-  color: var(--ink);
-  line-height: 1.5;
-  font-size: 16px;
-}
+html { scroll-behavior: smooth; }
+body { font-family: var(--body); background: var(--paper); color: var(--ink); line-height: 1.55; font-size: 16px; }
 #root { min-height: 100vh; }
-button { font: inherit; cursor: pointer; color: inherit; }
-button:disabled { opacity: 0.35; cursor: default; }
+button, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:disabled { opacity: 0.4; cursor: default; }
 a { color: var(--upc); }
-code { background: var(--white); border: 1px solid var(--line); padding: 1px 6px; }
-:focus-visible { outline: 3px solid var(--upc); outline-offset: 2px; }
+code { background: var(--white); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
+:focus-visible { outline: 3px solid rgba(0, 123, 192, 0.45); outline-offset: 2px; border-radius: 6px; }

@@ -1,18 +1,17 @@
 export interface DayData {
   id: string;
-  label: string;
-  description: string;
-  date: string;
+  date: string;          // AAAA-MM-DD
+  weekday: number;       // 0 = dilluns … 6 = diumenge
+  solarIdx: number;      // sol del dia / dia molt assolellat del mateix mes
+  activityIdx: number;   // consum del dia / mediana dels laborables del mes
   hours: string[];
-  demand: number[];   // kW
-  solar: number[];    // kW
-  price: number[];    // €/kWh
-  co2: number[];      // kg CO2/kWh
-  pctFossil: number[];// % generació amb emissions
-  charge: number[];   // kW que entren a la bateria
-  discharge: number[];// kW que surten de la bateria
-  soc: number[];      // % estat de càrrega al final de cada hora
-  grid: number[];     // kW importats de la xarxa
+  demand: number[];      // kW
+  solar: number[];       // kW
+  price: number[];       // €/kWh
+  co2: number[];         // kg CO2/kWh
+  charge: number[];      // kW que entren a la bateria (estratègia òptima)
+  discharge: number[];   // kW que surten de la bateria
+  soc: number[];         // % estat de càrrega al final de cada hora
   totals: {
     demandKwh: number;
     solarKwh: number;
@@ -42,6 +41,4 @@ export interface DashboardData {
     solarMwh: number;
     demandMwh: number;
   };
-  monthly: { month: string; solarMwh: number; demandMwh: number; co2: number; price: number }[];
-  co2Heatmap: { months: number[]; values: (number | null)[][] };
 }

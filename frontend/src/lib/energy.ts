@@ -57,7 +57,7 @@ export function evaluate(day: DayData, bat: Battery, c: number[], d: number[]): 
     socs.push(soc);
     grid.push(b.net[h] + c[h] - d[h]);
   }
-  // Regla del dia: la pila ha d'acabar com ha començat (com l'òptim). Si acaba més buida,
+  // Regla del dia: la bateria ha d'acabar com ha començat (com l'òptim). Si acaba més buida,
   // l'energia que falta es compra a l'hora més cara i bruta del dia (pitjor cas), de manera
   // que cap estratègia pot "guanyar" a l'òptim gastant-se la reserva.
   const debt = Math.max(0, bat.soc0 - soc) / bat.eta;
@@ -117,7 +117,7 @@ export function diagnose(day: DayData, bat: Battery, user: RunResult): string[] 
   const cents = (v: number) => (v * 100).toLocaleString("ca-ES", { maximumFractionDigits: 1 });
   const used = new Set<number>();
 
-  // Descàrregues fetes massa aviat: hi havia hores més valuoses més tard i la pila s'hi va quedar buida
+  // Descàrregues fetes massa aviat: hi havia hores més valuoses més tard i la bateria s'hi va quedar buida
   for (let h = 0; h < 24; h++) {
     if (user.d[h] < 50) continue;
     const later = [...Array(24).keys()].filter((k) => k > h && w[k] > w[h] * 1.15 && user.soc[k - 1] < 100 && user.d[k] < bat.pmax - 50);

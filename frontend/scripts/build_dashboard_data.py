@@ -142,22 +142,26 @@ def main() -> None:
     df = build_hourly(DATA_DIR)
     days = [g for _, g in df.groupby(df.index.date) if len(g) == 24]
 
-    # Escenaris representatius (els dies amb més sol de cada tipus)
-    def pick(cond):
-        cands = [g for g in days if cond(g.index[0])]
-        return max(cands, key=lambda g: g["pv"].sum()) if cands else None
+    # Tots els dies complets: el frontend permet triar-ne qualsevol per dia i mes.
+    # Índexs per descriure el dia: sol respecte al millor dia del mes i activitat
+    # respecte a la mediana dels dies laborables del mes.
+    sol = {str(g.index[0].date()): g["pv"].sum() for g in days}
+    dem = {str(g.index[0].date()): g["demand"].sum() for g in days}
+    by_month: dict[int, list] = {}
+    for g in days:
+        by_month.setdefault(g.index[0].month, []).append(g)
+    sol_ref = {m: np.percentile([x["pv"].sum() for x in gs], 90) for m, gs in by_month.items()}
+    act_ref = {m: np.median([x["demand"].sum() for x in gs if x.index[0].weekday() < 5] or [1]) for m, gs in by_month.items()}
 
-    scenarios = [
-        (pick(lambda d: d.month in (5, 6) and d.weekday() < 5), "Dia lectiu assolellat",
-         "Un dia de classe de final de primavera: molta activitat i molt sol."),
-        (pick(lambda d: d.month in (5, 6) and d.weekday() >= 5), "Cap de setmana",
-         "Edificis gairebé buits: el sol pesa més respecte al consum."),
-        (pick(lambda d: d.month in (12, 1, 2) and d.weekday() < 5), "Dia lectiu d'hivern",
-         "Dies curts i sol baix: la bateria treballa sobretot amb l'energia de la xarxa."),
-        (pick(lambda d: d.month == 8 and d.weekday() < 5), "Agost",
-         "Campus a mig gas per vacances, però amb sol d'estiu."),
-    ]
-    payload_days = [day_payload(g, l, s) for g, l, s in scenarios if g is not None]
+    payload_days = []
+    for g in days:
+        d0 = g.index[0]
+        p = day_payload(g, "", "")
+        p["weekday"] = int(d0.weekday())
+        p["solarIdx"] = round(float(sol[str(d0.date())] / max(sol_ref[d0.month], 1)), 3)
+        p["activityIdx"] = round(float(dem[str(d0.date())] / max(act_ref[d0.month], 1)), 3)
+        del p["label"], p["description"], p["pctFossil"], p["grid"]
+        payload_days.append(p)
 
     # Balanç anual sobre tots els dies complets
     tot = {"co2Base": 0.0, "co2Opt": 0.0, "costBase": 0.0, "costOpt": 0.0, "solar": 0.0, "demand": 0.0}
@@ -201,8 +205,6 @@ def main() -> None:
     OUT.write_text(json.dumps(out, ensure_ascii=False))
     print(f"Escrit {OUT} ({OUT.stat().st_size/1024:.0f} KB) · {len(payload_days)} escenaris · {len(days)} dies")
     print(json.dumps(out["annual"], indent=1))
-    for d in payload_days:
-        print(d["label"], d["date"], d["totals"])
 
 
 if __name__ == "__main__":

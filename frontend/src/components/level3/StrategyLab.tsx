@@ -1,9 +1,8 @@
 import { useMemo } from "react";
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { AXIS, C, fmt } from "../../theme";
+import { C, fmt } from "../../theme";
 import type { DayData } from "../../types";
 import {
-  type Action, type Battery, diagnose, heuristicActions, hourWeights, optimalRun, runActions,
+  type Action, type Battery, heuristicActions, optimalRun, runActions,
 } from "../../lib/energy";
 
 interface Props { day: DayData; bat: Battery; actions: Action[] }
@@ -25,16 +24,7 @@ export default function StrategyLab({ day, bat, actions }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [day, bat, actions]);
 
-  const w = useMemo(() => hourWeights(day), [day]);
-  const why = played ? diagnose(day, bat, runs.user) : [];
   const max = Math.max(...STRATS.map((s) => runs[s.k].score), 0.1);
-  const chart = day.hours.map((h, i) => ({
-    hour: h,
-    user: (100 * runs.user.soc[i]) / bat.cap,
-    heur: (100 * runs.heur.soc[i]) / bat.cap,
-    opt: (100 * runs.opt.soc[i]) / bat.cap,
-  }));
-  const wMax = Math.max(...w);
 
   const actOf = (k: "user" | "heur" | "opt", h: number) => {
     const r = runs[k];
@@ -51,7 +41,7 @@ export default function StrategyLab({ day, bat, actions }: Props) {
         </p>
       )}
 
-      <div className="lab-grid">
+      <div className="card">
         <section>
           <p className="label">Puntuació oficial del repte · 0,7 × ΔCO₂ % + 0,3 × Δcost %</p>
           <ul className="scores">
@@ -74,27 +64,11 @@ export default function StrategyLab({ day, bat, actions }: Props) {
           </p>
         </section>
 
-        <section className="why">
-          <p className="label">Per què?</p>
-          {why.length ? (
-            <ol>{why.map((t, i) => <li key={i}>{t}</li>)}</ol>
-          ) : (
-            <p className="muted">{played ? "Bona partida: no hem detectat errors clars respecte a l'estratègia òptima." : "Quan juguis, aquí t'explicarem on has guanyat i on has perdut punts."}</p>
-          )}
-        </section>
       </div>
 
-      <div className="block-sub">
+      <div className="card">
         <p className="label">Què ha fet cada estratègia, hora a hora</p>
         <div className="matrix" role="table" aria-label="Decisions per hora de cada estratègia">
-          <div className="mx-row mx-value" role="row">
-            <span className="mx-lab" role="rowheader">Valor de l'hora</span>
-            {w.map((v, h) => (
-              <span key={h} className="mx-cell" role="cell" title={`${day.hours[h]} · ${fmt.gCo2(day.co2[h])}/kWh · ${fmt.cKwh(day.price[h])}/kWh`}>
-                <span className="mx-v" style={{ height: `${(100 * v) / wMax}%` }} />
-              </span>
-            ))}
-          </div>
           {STRATS.map((s) => (
             <div className="mx-row" role="row" key={s.k}>
               <span className="mx-lab" role="rowheader">{s.name.replace("Estratègia ", "")}</span>
@@ -111,35 +85,9 @@ export default function StrategyLab({ day, bat, actions }: Props) {
         <ul className="legend">
           <li><i style={{ background: C.charge }} />▲ Carrega</li>
           <li><i style={{ background: C.battery }} />▼ Descarrega</li>
-          <li><i style={{ background: C.ink }} />Valor de l'hora: com de cara i bruta és l'electricitat (més alt = millor per descarregar)</li>
         </ul>
       </div>
 
-      <div className="block-sub">
-        <p className="label">Nivell de la bateria</p>
-        <ResponsiveContainer width="100%" height={220}>
-          <LineChart data={chart} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-            <CartesianGrid stroke={C.grid} vertical={false} />
-            <XAxis dataKey="hour" tick={AXIS} interval={2} tickLine={false} axisLine={{ stroke: C.ink }} />
-            <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} allowDataOverflow unit=" %" width={50} tick={AXIS} tickLine={false} axisLine={false} />
-            <Tooltip formatter={(v, n) => [`${fmt.int(Number(v))} %`, STRATS.find((s) => s.k === n)?.name ?? n]} />
-            {STRATS.map((s) => (
-              <Line key={s.k} type="stepAfter" dataKey={s.k} stroke={s.color} strokeWidth={s.k === "user" ? 3 : 2}
-                strokeDasharray={s.k === "heur" ? "5 4" : undefined} dot={false} isAnimationActive={false} />
-            ))}
-          </LineChart>
-        </ResponsiveContainer>
-        <ul className="legend">
-          {STRATS.map((s) => <li key={s.k}><i style={{ background: s.color }} />{s.name}</li>)}
-        </ul>
-      </div>
-
-      <div className="principles">
-        <div><b>1 · Posa preu a cada hora.</b><p>L'algorisme combina el CO₂ (70 %) i el preu (30 %) en un sol "valor" per kWh.</p></div>
-        <div><b>2 · Busca diferències grans.</b><p>Només mou energia d'una hora barata a una de cara si la diferència supera el 10 % que es perd a la bateria.</p></div>
-        <div><b>3 · Respecta els límits.</b><p>{fmt.int(bat.cap)} kWh, {fmt.int(bat.pmax)} kW, sense abocar a la xarxa i acabant el dia com l'ha començat.</p></div>
-        <div><b>4 · El repte real: predir.</b><p>Aquí l'algorisme coneix el futur. A la realitat ha de decidir amb previsions de consum, sol, preu i CO₂ que poden fallar.</p></div>
-      </div>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { fmt } from "../../theme";
 import type { DashboardData, DayData } from "../../types";
 
-/** Tres xifres grans, amb lectura quotidiana. */
+/** Tres xifres compactes perquè la secció 1 càpiga en una pantalla. */
 export default function KpiStrip({ data, day }: { data: DashboardData; day: DayData }) {
   const t = day.totals;
   const eq = data.equivalences;
@@ -13,37 +13,22 @@ export default function KpiStrip({ data, day }: { data: DashboardData; day: DayD
     <div className="kpis">
       <article className="kpi">
         <p className="label">Autosuficiència del dia</p>
-        <div className="kpi-num">{fmt.dec(t.solarShare)}<small>%</small></div>
-        <p>de l'electricitat l'han produït les plaques del campus.</p>
-        <div className="bar" role="img" aria-label={`Sol ${fmt.dec(t.solarShare)} %, bateria ${fmt.dec(batShare)} %`}>
+        <div className="kpi-row"><span className="kpi-num">{fmt.dec(t.solarShare)}<small>%</small></span>
+          <span className="kpi-txt">de l'electricitat ve de les plaques del campus</span></div>
+        <div className="bar" role="img" aria-label={`Sol ${fmt.dec(t.solarShare)} %, bateria ${fmt.dec(batShare)} %, xarxa la resta`}>
           <span className="b-solar" style={{ width: `${t.solarShare}%` }} />
           <span className="b-bat" style={{ width: `${batShare}%` }} />
         </div>
-        <ul className="key">
-          <li><i className="b-solar" />Sol {fmt.dec(t.solarShare)} %</li>
-          <li><i className="b-bat" />Des de la bateria {fmt.dec(batShare)} %</li>
-          <li><i className="b-grid" />Xarxa</li>
-        </ul>
       </article>
-
       <article className="kpi">
-        <p className="label">CO₂ evitat avui</p>
-        <div className="kpi-num">{fmt.int(t.co2SavedKg)}<small>kg</small></div>
-        <p>gràcies a la bateria, un {fmt.dec((100 * t.co2SavedKg) / t.co2BaseKg)} % menys.</p>
-        <dl className="equiv">
-          <div><dt>{fmt.int(km)} km</dt><dd>de cotxe que no s'han fet</dd></div>
-          <div><dt>{fmt.int(trees)} arbres</dt><dd>absorbint CO₂ durant un any</dd></div>
-        </dl>
+        <p className="label">CO₂ evitat aquest dia</p>
+        <div className="kpi-row"><span className="kpi-num">{fmt.int(t.co2SavedKg)}<small>kg</small></span>
+          <span className="kpi-txt">≈ {fmt.int(km)} km de cotxe o {fmt.int(trees)} arbres durant un any</span></div>
       </article>
-
       <article className="kpi">
-        <p className="label">Factura</p>
-        <div className="kpi-num">{fmt.int(t.costSavedEur)}<small>€</small></div>
-        <p>menys d'electricitat comprada a la xarxa avui.</p>
-        <dl className="equiv">
-          <div><dt>{fmt.int(t.demandKwh / 1000)} MWh</dt><dd>consumits pel campus en 24 h</dd></div>
-          <div><dt>{fmt.int(t.shiftedKwh)} kWh</dt><dd>canviats d'hora per la bateria</dd></div>
-        </dl>
+        <p className="label">Estalvi a la factura</p>
+        <div className="kpi-row"><span className="kpi-num">{fmt.int(t.costSavedEur)}<small>€</small></span>
+          <span className="kpi-txt">{fmt.int(t.shiftedKwh)} kWh canviats d'hora per la bateria</span></div>
       </article>
     </div>
   );
