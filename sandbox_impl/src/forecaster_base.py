@@ -1,46 +1,28 @@
-"""
-forecaster_base.py — Interfaz abstracta para el generador de carga neta.
+"""forecaster_base.py — Contrato entre BatteryAgent y el generador de carga neta.
 
-Contrato con BatteryAgent: el generador recibe obs, historial y horizonte,
-y devuelve la carga neta prevista N̂_0..N̂_{H-1}.
+NO MODIFICAR. Ver ARQUITECTURA_GENERADOR.md.
+Sin `abc` a propósito: una subclase incompleta se puede seguir cargando del .pkl
+y, si falla, el agente cae a modo v1 en vez de romper al deserializar.
 """
+from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import Any
 import numpy as np
 
 
-class NetLoadForecaster(ABC):
-    """Contrato con BatteryAgent."""
+class NetLoadForecaster:
+    """Predice N = load_kw - pv_kw (kW) para las horas t .. t+H-1.
 
-    @abstractmethod
-    def predict(
-        self,
-        obs: dict,
-        history: list[tuple],
-        horizon: int,
-    ) -> np.ndarray:
-        """
-        Predice la carga neta para el horizonte de `horizon` horas.
+    Formatos de salida de `predict` (índice 0 = hora actual t, longitud H, np.float64):
+      - puntual:    np.ndarray (H,)
+      - cuantiles:  {"p10": (H,), "p50": (H,), "p90": (H,), ...}   p10 <= p50 <= p90
+      - escenarios: {"scenarios": (S, H), "probs": (S,)}            S <= 50, probs >= 0, suma 1
+    NaN / inf = sin previsión para esa hora. N puede ser negativa: no recortar a 0.
+    """
 
-        Parámetros
-        ----------
-        obs : dict
-            El diccionario de la hora actual (sin modificar).
-        history : list of tuple
-            Lista [(timestamp, N_medida_kW), ...] de horas pasadas,
-            la última = t-1.
-        horizon : int
-            H (≤ 24).
+    def fit(self, hourly_df):
+        """Solo en local. hourly_df: columnas Fecha, load_kw, pv_kw, precio_eur_per_kwh, co2_kg_per_kwh."""
+        return self
 
-        Devuelve
-        --------
-        np.ndarray de longitud `horizon`
-            En kW, ÍNDICE 0 = HORA ACTUAL t.
-            NaN o inf = "sin previsión para esa hora".
-
-        Notas
-        -----
-        Si la interfaz que te den usa otros nombres, se adapta en
-        _get_forecast (agent.py) sin tocar el LP.
-        """
+    def predict(self, obs: dict, history: list, horizon: int):
+        """obs sin modificar; history = [(ts_inicio_hora, load_kw, pv_kw), ...] ordenada, con saltos."""
+        return np.full(int(horizon), np.nan)
