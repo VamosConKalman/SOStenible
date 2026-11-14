@@ -48,7 +48,12 @@ def load_hourly_df() -> pd.DataFrame:
     load_5min = (
         -df_contador_idx["Contador - POTENCIA ACTIVA EXPORTADA (kW)"]
     ).clip(lower=0, upper=5000)
-    load_hourly = load_5min.resample("1h").mean().dropna()
+    load_hourly = (
+        load_5min.resample("1h").mean()
+        .asfreq("1h")
+        .interpolate(limit=3, limit_area="inside")
+        .dropna()
+    )
 
     # --- Inversor ---
     df_inversor = pd.read_csv(data_dir / "inversor.csv", parse_dates=["Fecha"])
@@ -74,7 +79,12 @@ def load_hourly_df() -> pd.DataFrame:
         + df_inversor_idx[p2].fillna(0)
         + df_inversor_idx[p3].fillna(0)
     ).clip(lower=0)
-    pv_hourly = pv_total_5min.resample("1h").mean().dropna()
+    pv_hourly = (
+        pv_total_5min.resample("1h").mean()
+        .asfreq("1h")
+        .interpolate(limit=3, limit_area="inside")
+        .dropna()
+    )
 
     # --- PVPC y CO2 ---
     df_pvpc = pd.read_csv(data_dir / "precio_pvpc.csv", parse_dates=["Fecha"])
@@ -122,13 +132,17 @@ def get_small_df(n_hours: int = 24) -> pd.DataFrame:
     - pv_kw: 0 kW (noche)
     - precio_eur_per_kwh: oscilación simple (baja noche, alta tarde)
     - co2_kg_per_kwh: 0.07 constante
+
+    Usa np.resize para cualquier n_hours.
     """
     dates = pd.date_range("2026-01-05", periods=n_hours, freq="1h")
 
-    prices = np.array(
+    # Patrón de 24 h → se redimensiona para cualquier n_hours
+    pattern = np.array(
         [0.08] * 6 + [0.12] * 4 + [0.16] * 4 + [0.20] * 4 + [0.10] * 6 + [0.08] * 4,
         dtype=float,
-    )[:n_hours]
+    )
+    prices = np.resize(pattern, n_hours)[:n_hours]
 
     return pd.DataFrame(
         {

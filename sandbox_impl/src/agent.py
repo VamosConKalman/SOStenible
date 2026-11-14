@@ -3,7 +3,7 @@ agent.py — BatteryAgent orquestador (MPC con LP HiGHS).
 
 Flujo por hora:
   1. Parsear obs, registrar historial
-  2. Calcular H (horizonte truncado)
+  2. Calcular H (horizonte truncado desde mes real)
   3. Calcular w' (pesos horarios exactos de obs)
   4. Calcular V (valor terminal)
   5. Llamar al generador → N̂ (o None = modo v1)
@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Optional, Any
+from typing import Optional, Any, Union
 
 import numpy as np
 import pandas as pd
@@ -34,6 +34,9 @@ class BatteryAgent:
         "v_coef",
         "eps",
         "delta",
+        "w_co2",
+        "w_cost",
+        "forecaster_quantile",
         "use_forecaster",
         "eta_c",
         "eta_d",
@@ -43,8 +46,11 @@ class BatteryAgent:
         "history",
         "n_forecast_fail",
         "n_fail",
+        "n_index_shift",
+        "period_end_override",
         "last_info",
         "_forecaster",
+        "_last_ts",
     )
 
     # ------------------------------------------------------------------
@@ -66,6 +72,9 @@ class BatteryAgent:
             self.delta = float(params.get("delta", 1e-6))
             self.w_co2 = float(params.get("w_co2", 0.7))
             self.w_cost = float(params.get("w_cost", 0.3))
+            self.forecaster_quantile = float(
+                params.get("forecaster_quantile", 0.5)
+            )
             self.use_forecaster = bool(params.get("use_forecaster", False))
             v_coef_raw = params.get("v_coef")
             self.v_coef = (
@@ -80,6 +89,7 @@ class BatteryAgent:
             self.delta = 1e-6
             self.w_co2 = 0.7
             self.w_cost = 0.3
+            self.forecaster_quantile = 0.5
             self.use_forecaster = False
             self.v_coef = None
 
@@ -91,6 +101,7 @@ class BatteryAgent:
 
         # Historial de carga neta medida: [(timestamp, net_load_kw), ...]
         self.history: list[tuple] = []
+        self._last_ts: Optional[pd.Timestamp] = None
 
         # Previsión neta (se actualiza en _get_forecast)
         self.net_forecast: Optional[np.ndarray] = None
@@ -98,6 +109,10 @@ class BatteryAgent:
         # Contadores de fallos (diagnóstico)
         self.n_forecast_fail: int = 0
         self.n_fail: int = 0
+        self.n_index_shift: int = 0
+
+        # Override para backtest (fin de periodo)
+        self.period_end_override: Optional[pd.Timestamp] = None
 
         # Información del último paso
         self.last_info: dict[str, Any] = {}
@@ -121,55 +136,102 @@ class BatteryAgent:
             self._forecaster = None
 
     # ------------------------------------------------------------------
-    # Horizonte
+    # Horizonte: fin de periodo desde ts real (correc. 0.7)
     # ------------------------------------------------------------------
-    def _horizon(
-        self,
-        preus: list,
-        co2s: list,
-        period_ends: list[str] | None = None,
-    ) -> tuple[int, bool]:
+    def _horizon(self, ts: pd.Timestamp, preus: list, co2s: list) -> tuple:
         """
         Calcula H y is_end.
 
-        Parámetros
-        ----------
-        preus : list
-            Precios de las próximas horas.
-        co2s : list
-            CO₂ de las próximas horas.
-        period_ends : list[str] | None
-            Fechas de fin de periodo (último día del mes a 23:00).
-            Si se proporciona, se trunca H para no cruzar el fin de periodo.
-
-        Devuelve
-        --------
-        (H, is_end) : tuple[int, bool]
+        Usa el fin de mes real, o period_end_override si se fija.
+        hours_left incluye la hora actual (+1).
         """
         n = min(len(preus), len(co2s))
-        H = min(n, 24)
 
-        is_end = False
-        if period_ends is not None and len(period_ends) > 0:
-            try:
-                ts_current = pd.Timestamp(
-                    self.last_info.get("_timestamp", "")
-                )
-                if isinstance(ts_current, pd.Timestamp):
-                    first_end = pd.Timestamp(period_ends[0])
-                    hours_left = (first_end - ts_current).total_seconds() / 3600
-                    if hours_left > 0 and hours_left <= H:
-                        H = int(hours_left)
-                        is_end = True
-                        if H < 1:
-                            H = 1
-            except Exception:
-                pass
+        # Determinar fin de periodo
+        if self.period_end_override is not None:
+            period_end = self.period_end_override
+        else:
+            # Último día del mes de ts a las 23:00
+            first_next = ts.replace(day=1) + pd.DateOffset(months=1)
+            last_day = first_next - pd.Timedelta(days=1)
+            period_end = pd.Timestamp(
+                last_day.year, last_day.month, last_day.day, 23, 0, 0,
+            )
+
+        hours_left = (period_end - ts).total_seconds() / 3600.0 + 1.0  # +1 incluye t
+        hours_left = max(0.0, hours_left)
+
+        H = min(n, 24, int(hours_left))
+        is_end = hours_left <= 24 or n < 24
+
+        if H < 1:
+            H = 1
 
         return H, is_end
 
     # ------------------------------------------------------------------
-    # Generador de previsión de carga neta
+    # Adaptador de cuantiles (correc. 0.11)
+    # ------------------------------------------------------------------
+    def _interp_quantile(self, pred: Union[np.ndarray, dict]) -> np.ndarray:
+        """
+        Si pred es dict con p10, p50, p90 interpola en self.forecaster_quantile.
+        Si es ndarray, lo devuelve tal cual.
+        """
+        if isinstance(pred, dict):
+            keys = sorted(pred.keys())
+
+            def _parse_q(k):
+                """Extrai el valor de quantile d'una clau: 'p10' → 0.1, '0.5' → 0.5."""
+                ks = str(k)
+                if ks.startswith("p"):
+                    return float(ks[1:]) / 100.0
+                return float(ks)
+
+            q = self.forecaster_quantile
+            # Recortar a [0.1, 0.9]
+            q_clamped = max(0.1, min(0.9, q))
+
+            # Construir parells (quantile, clau) i ordenar
+            kv_pairs = [(_parse_q(k), k) for k in keys]
+            kv_pairs.sort(key=lambda x: x[0])
+
+            # Trobar quantils veïns
+            lower_key = None
+            upper_key = None
+            for q_val, k in kv_pairs:
+                if q_val <= q_clamped:
+                    lower_key = k
+                if upper_key is None and q_val >= q_clamped:
+                    upper_key = k
+                    break
+
+            if lower_key is None:
+                # q < tots: recortar al menor
+                result = np.full(len(pred[kv_pairs[0][1]]), float(pred[kv_pairs[0][1]]))
+            elif upper_key is None:
+                # q > tots: recortar al major
+                result = np.full(len(pred[kv_pairs[-1][1]]), float(pred[kv_pairs[-1][1]]))
+            elif lower_key == upper_key:
+                # Exacte
+                result = np.array(pred[lower_key], dtype=np.float64)
+            else:
+                # Interpolació lineal
+                lower_val = np.array(pred[lower_key], dtype=np.float64)
+                upper_val = np.array(pred[upper_key], dtype=np.float64)
+                lower_q = _parse_q(lower_key)
+                upper_q = _parse_q(upper_key)
+                if abs(upper_q - lower_q) < 1e-12:
+                    result = lower_val
+                else:
+                    frac = (q_clamped - lower_q) / (upper_q - lower_q)
+                    result = lower_val + frac * (upper_val - lower_val)
+
+            return result
+
+        return np.asarray(pred, dtype=np.float64)
+
+    # ------------------------------------------------------------------
+    # Generador de previsión de carga neta (correc. 0.11)
     # ------------------------------------------------------------------
     def _get_forecast(
         self,
@@ -178,14 +240,6 @@ class BatteryAgent:
     ) -> Optional[np.ndarray]:
         """
         Pide la previsión al generador y la adapta.
-
-        1. Si use_forecaster=False → None.
-        2. Llamar predict() dentro de try → None si falla.
-        3. Alinear: índice 0 = hora actual t.
-        4. Ajustar longitud a H: recortar si sobra, rellenar con inf si falta.
-        5. Cambiar NaN → inf.
-
-        Devuelve np.ndarray de longitud H o None.
         """
         if not self.use_forecaster or self._forecaster is None:
             return None
@@ -196,6 +250,9 @@ class BatteryAgent:
             if pred is None or len(pred) == 0:
                 self.n_forecast_fail += 1
                 return None
+
+            # Interpolar cuantiles si es dict
+            pred = self._interp_quantile(pred)
 
             # Ajustar longitud
             if len(pred) > horizon:
@@ -255,37 +312,89 @@ class BatteryAgent:
         # Guardar timestamp para _horizon
         self.last_info["_timestamp"] = str(ts)
 
-        # 2. Registrar carga neta medida en historial
+        # ------------------------------------------------------------------
+        # 0.9: Historial: (ts - 1h, N_medida), validado
+        # ------------------------------------------------------------------
         try:
             nova = obs.get("noves_dades_5min", {})
             last_load = float(nova.get("ultim_consum_kw", 0.0))
             last_pv = float(nova.get("ultima_solar_kw", 0.0))
             last_net = max(0.0, last_load - last_pv)
-            self.history.append((ts, last_net))
+
+            # Marcamos como no válida si:
+            # - es la primera llamada del agente
+            # - salto de más de 1h desde el último ts registrado
+            # - consumo y solar son ambos exactamente 0
+            valid = True
+            if self._last_ts is None:
+                valid = False  # primera llamada
+            else:
+                diff = abs((ts - self._last_ts).total_seconds())
+                if diff > 3600.0 + 1:  # salto > 1h
+                    valid = False
+            if last_load == 0.0 and last_pv == 0.0:
+                valid = False
+
+            if valid:
+                self.history.append((ts - pd.Timedelta(hours=1), last_net))
+            self._last_ts = ts
         except Exception:
             pass
 
-        # 3. Calcular H y is_end
-        preus = obs.get("preus_properes_24h", [])
-        co2s = obs.get("co2_properes_24h", [])
-        period_ends = obs.get("period_ends")  # opcional
+        # ------------------------------------------------------------------
+        # 0.10: Guard del índice 0
+        # ------------------------------------------------------------------
+        preus_raw = obs.get("preus_properes_24h", [])
+        co2s_raw = obs.get("co2_properes_24h", [])
 
-        H, is_end = self._horizon(preus, co2s, period_ends)
+        preu_actual = float(obs.get("preu_actual", 0.0))
+        co2_actual = float(obs.get("co2_actual", 0.0))
 
-        # 4. Calcular pesos w'
+        shift_detected = False
+        if len(preus_raw) > 0 and len(co2s_raw) > 0:
+            if (abs(preus_raw[0] - preu_actual) > 1e-9
+                    or abs(co2s_raw[0] - co2_actual) > 1e-9):
+                shift_detected = True
+                self.n_index_shift += 1
+                # Anteponer preu_actual y co2_actual
+                preus = [preu_actual] + list(preus_raw[:23])
+                co2s = [co2_actual] + list(co2s_raw[:23])
+            else:
+                preus = list(preus_raw[:24])
+                co2s = list(co2s_raw[:24])
+        else:
+            preus = []
+            co2s = []
+
+        # ------------------------------------------------------------------
+        # 2. Calcular H y is_end (desde mes real)
+        # ------------------------------------------------------------------
+        H, is_end = self._horizon(ts, preus, co2s)
+
+        # ------------------------------------------------------------------
+        # 3. Calcular pesos w'
+        # ------------------------------------------------------------------
         w = lp.compute_weights(
             np.asarray(co2s[:H], dtype=np.float64),
             np.asarray(preus[:H], dtype=np.float64),
             self.kappa,
+            w_co2=self.w_co2,
+            w_cost=self.w_cost,
         )
 
-        # 5. Calcular V
+        # ------------------------------------------------------------------
+        # 4. Calcular V
+        # ------------------------------------------------------------------
         V = self._terminal_value(w, is_end)
 
-        # 6. Obtener previsión de carga neta
+        # ------------------------------------------------------------------
+        # 5. Obtener previsión de carga neta
+        # ------------------------------------------------------------------
         net = self._get_forecast(obs, H)
 
-        # 7. Resolver LP
+        # ------------------------------------------------------------------
+        # 6. Resolver LP
+        # ------------------------------------------------------------------
         x = lp.solve_lp(
             w,
             s0=soc0,
@@ -295,14 +404,18 @@ class BatteryAgent:
             delta=self.delta,
         )
 
-        # 8. Extraer P = c_0 - d_0 y recortar
+        # ------------------------------------------------------------------
+        # 7. Extraer P = c_0 - d_0 y recortar
+        # ------------------------------------------------------------------
         if x is not None and len(x) >= 2:
             P = float(x[0]) - float(x[H])  # c_0 - d_0
             P = lp.clip_consigna(P, soc0, self.eps)
         else:
             P = 0.0
 
-        # 9. Registrar info de diagnóstico
+        # ------------------------------------------------------------------
+        # 8. Registrar info de diagnóstico
+        # ------------------------------------------------------------------
         mode = "forecast" if net is not None else "v1"
         self.last_info = {
             "H": H,
@@ -314,6 +427,7 @@ class BatteryAgent:
             "net_provided": net is not None,
             "n_forecast_fail": self.n_forecast_fail,
             "n_fail": self.n_fail,
+            "n_index_shift": self.n_index_shift,
         }
 
         return P

@@ -44,7 +44,10 @@ class CampusBatteryEnv:
         soc_pct: float = 0.5,
     ):
         self._soc_init = soc_pct * cap
-        self.df = hourly_data.copy().reset_index(drop=True)
+        self.df = hourly_data.copy().reset_index()
+        # Si la columna se llama "index" (y no hay "Fecha"), renombrar
+        if "index" in self.df.columns and "Fecha" not in self.df.columns:
+            self.df = self.df.rename(columns={"index": "Fecha"})
         self.n = len(self.df)
 
         self.cap = cap
