@@ -1,0 +1,17 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "helmcode": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Helmcode",
+      "options": {
+        "baseURL": "https://api.helmcode.com/v1",
+        "apiKey": "{env:HELMCODE_API_KEY}"
+      },
+      "models": {
+        "qwen3.6": { "name": "Qwen 3.6" }
+      }
+    }
+  },
+  "model": "helmcode/qwen3.6"
+}
