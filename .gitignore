@@ -1,4 +1,35 @@
+# Opencode
 .opencode
 *.opencode
-.venv
-*.venv
+
+# Virtual environment
+.venv/
+*.venv/
+
+# Environment
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Sandbox debug / test scripts (keep sandbox_impl/ src and tests)
+backtest.py
+debug_*.py
