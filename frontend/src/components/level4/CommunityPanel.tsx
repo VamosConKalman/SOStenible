@@ -53,11 +53,14 @@ export default function CommunityPanel({ day, days }: { day: DayData; days: DayD
         <MonteCarlo days={days} start={start} len={len} pct={pct} />
       </div>
 
-      <div className="card actions">
+      <div className="card eco">
+        <h3 className="eco-title">Ecoconsells</h3>
+        <div className="actions">
         <div><MonitorOff size={22} aria-hidden /><b>Apaga en marxar</b><p>Ordinadors, pantalles i equips de laboratori que queden encesos de nit alimenten el consum de fons.</p></div>
-        <div><ThermometerSun size={22} aria-hidden /><b>Climatització a les hores vermelles</b><p>Un grau menys de fred o de calor al vespre redueix el consum quan l'electricitat és més bruta.</p></div>
-        <div><Cpu size={22} aria-hidden /><b>Càlculs pesats a les hores verdes</b><p>Simulacions, entrenaments de models i còpies de seguretat es poden programar al migdia.</p></div>
+        <div><ThermometerSun size={22} aria-hidden /><b>Climatització a les hores punta</b><p>Un grau menys de fred o de calor al vespre redueix el consum quan l'electricitat és menys sostenible.</p></div>
+        <div><Cpu size={22} aria-hidden /><b>Càlculs pesats a les hores vall</b><p>Simulacions, entrenaments de models i còpies de seguretat es poden programar al migdia.</p></div>
         <div><Lightbulb size={22} aria-hidden /><b>Llum natural</b><p>Les aules buides amb els llums encesos són energia que ni el sol ni la bateria poden compensar.</p></div>
+        </div>
       </div>
     </div>
   );

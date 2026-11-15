@@ -2,7 +2,8 @@ import { useEffect, useMemo } from "react";
 import { ArrowDownToLine, ArrowUpFromLine, Hourglass, RotateCcw, Undo2 } from "lucide-react";
 import { fmt, tercile } from "../../theme";
 import type { DayData } from "../../types";
-import { type Action, type Battery, baseline, decisionPoints, hourWeights, optimalRun, runActions } from "../../lib/energy";
+import { type Action, type Battery, baseline, decisionPoints, hourWeights, optimalRun, runActions, step } from "../../lib/energy";
+import ForecastChart from "./ForecastChart";
 import BatteryIcon, { MOOD_TXT, moodOf } from "../BatteryIcon";
 
 interface Props {
@@ -116,8 +117,9 @@ export default function DecisionGame({ day, bat, actions, setActions, onAnalyse 
   });
 
   const socPct = (100 * st.soc) / bat.cap;
+  /** Nivell de bateria després de cada opció (sense revelar-ne la puntuació). */
+  const nextSoc = (a: Action) => (100 * step(bat, st.soc, net[Math.min(h, 23)], a).soc) / bat.cap;
   const batMode = last?.a === "charge" && last.c > 1 ? "charge" : last?.a === "discharge" && last.d > 1 ? "discharge" : "idle";
-  const fc = [...Array(6).keys()].map((k) => h + 1 + k).filter((k) => k < 24);
 
   return (
     <div className="game">
@@ -162,24 +164,12 @@ export default function DecisionGame({ day, bat, actions, setActions, onAnalyse 
                 return (
                   <button key={a} className={`choice ${a}`} onClick={() => decide(a)}>
                     <Icon size={22} aria-hidden /><span>{label}</span><kbd>{key}</kbd>
+                    <small className="choice-soc">{fmt.int(socPct)} % → {fmt.int(nextSoc(a))} %</small>
                   </button>
                 );
               })}
             </div>
 
-            {fc.length > 0 && (
-              <div className="forecast">
-                <p className="label">Previsió de les properes hores</p>
-                <table>
-                  <thead><tr><th />{fc.map((k) => <th key={k}>{day.hours[k]}</th>)}</tr></thead>
-                  <tbody>
-                    <tr><td>g CO₂</td>{fc.map((k) => <td key={k} className={tercile(day.co2, day.co2[k])}>{Math.round(day.co2[k] * 1000)}</td>)}</tr>
-                    <tr><td>c€/kWh</td>{fc.map((k) => <td key={k} className={tercile(day.price, day.price[k])}>{fmt.dec(day.price[k] * 100, 1)}</td>)}</tr>
-                  </tbody>
-                </table>
-                <p className="fine">Al repte real l'agent només té previsions, amb error. Aquí la previsió és perfecta.</p>
-              </div>
-            )}
           </section>
         ) : (
           <section className="situation done">
@@ -187,11 +177,11 @@ export default function DecisionGame({ day, bat, actions, setActions, onAnalyse 
           </section>
         )}
 
-        <section className="verdict">
+        <section className="verdict compact">
           <div className="score-total">
             <p className="label">Punts de les decisions</p>
             <div className={`score-big ${st.total >= 0 ? "pos" : "neg"}`}>{fmt.pts(st.total)}</div>
-            <p className="fine">{h}/24 hores decidides · puntuació orientativa hora a hora; l'oficial és al nivell 3.</p>
+            <p className="fine">{h}/24 hores decidides · orientatiu; la puntuació oficial és a la secció 3.</p>
           </div>
 
           {last ? (
@@ -211,6 +201,8 @@ export default function DecisionGame({ day, bat, actions, setActions, onAnalyse 
           </div>
         </section>
       </div>
+
+      {!done && <ForecastChart day={day} h={h} socPct={socPct} />}
     </div>
   );
 }

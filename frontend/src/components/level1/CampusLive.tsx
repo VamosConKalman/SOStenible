@@ -263,20 +263,7 @@ export default function CampusLive({ day, hour, setHour }: { day: DayData; hour:
 
       <div className="live-bottom">
         <p className="label">D'on ve l'electricitat, hora a hora</p>
-        <div className="source-strip" role="group" aria-label="Origen de l'electricitat per hora">
-          {day.hours.map((hh, h) => {
-            const s = sourcesAt(day, h);
-            return (
-              <button key={hh} className={h === hour ? "on" : ""} onClick={() => { setPlaying(false); setHour(h); }}
-                title={`${hh} · sol ${Math.round(s.solar * 100)} % · bateria ${Math.round(s.bat * 100)} % · xarxa ${Math.round(s.grid * 100)} %`}
-                aria-label={`${hh}: sol ${Math.round(s.solar * 100)} %, bateria ${Math.round(s.bat * 100)} %, xarxa ${Math.round(s.grid * 100)} %`}>
-                <span style={{ height: `${s.grid * 100}%`, background: C.grid_ }} />
-                <span style={{ height: `${s.bat * 100}%`, background: C.battery }} />
-                <span style={{ height: `${s.solar * 100}%`, background: C.solar }} />
-              </button>
-            );
-          })}
-        </div>
+        <SourceFrieze day={day} hour={hour} onPick={(h) => { setPlaying(false); setHour(h); }} />
         <div className="live-slider">
           <input type="range" min={0} max={23} value={hour} aria-label="Hora del dia"
             onChange={(e) => { setPlaying(false); setHour(+e.target.value); }} />
@@ -288,5 +275,35 @@ export default function CampusLive({ day, hour, setHour }: { day: DayData; hour:
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Fris horitzontal: a cada hora, una columna apilada amb la proporció exacta
+ * de plaques solars, bateria i xarxa (dibuixada en SVG perquè cap estil la deformi).
+ */
+function SourceFrieze({ day, hour, onPick }: { day: DayData; hour: number; onPick: (h: number) => void }) {
+  const W = 960, H = 64, top = 4, axis = 18, cw = W / 24, ch = H - top;
+  return (
+    <svg viewBox={`0 0 ${W} ${H + axis}`} className="frieze" role="img"
+      aria-label="Proporció de plaques solars, bateria i xarxa elèctrica a cada hora">
+      {day.hours.map((hh, h) => {
+        const s = sourcesAt(day, h);
+        const x = h * cw + 1.5, w = cw - 3;
+        const gH = s.grid * ch, bH = s.bat * ch, sH = s.solar * ch;
+        return (
+          <g key={hh} onClick={() => onPick(h)} style={{ cursor: "pointer" }}>
+            <title>{`${hh} · plaques ${fmt.dec(s.solar * 100, 1)} % · bateria ${fmt.dec(s.bat * 100, 1)} % · xarxa ${fmt.dec(s.grid * 100, 1)} %`}</title>
+            <rect x={x} y={top} width={w} height={gH} fill={C.grid_} />
+            <rect x={x} y={top + gH} width={w} height={bH} fill={C.battery} />
+            <rect x={x} y={top + gH + bH} width={w} height={sH} fill={C.solar} />
+            {h === hour && <rect x={x - 1} y={top - 2} width={w + 2} height={ch + 4} fill="none" stroke={C.ink} strokeWidth={2.5} rx={2} />}
+          </g>
+        );
+      })}
+      {day.hours.map((hh, h) => (h % 2 === 0 ? (
+        <text key={hh} x={h * cw + cw / 2} y={H + axis - 4} textAnchor="middle" className={`frieze-h ${h === hour ? "on" : ""}`}>{hh.slice(0, 2)}h</text>
+      ) : null))}
+    </svg>
   );
 }

@@ -16,7 +16,7 @@ export default function DidYouKnow() {
   return (
     <aside className="dyk" aria-live="polite">
       <div className="dyk-tag">Sabies que…?</div>
-      <p className="dyk-body">{FACTS[i].replace(/^Sabies que /, "").replace(/^./, (c) => c.toUpperCase())}</p>
+      <p className="dyk-body">{FACTS[i].replace(/^Sabies que /, "").replace(/^./, (c) => c.toUpperCase()).replace(/\?$/, ".")}</p>
       <div className="dyk-nav">
         <button aria-label="Anterior" onClick={() => setI((i + n - 1) % n)}><ChevronLeft size={18} /></button>
         <span>{i + 1}/{n}</span>

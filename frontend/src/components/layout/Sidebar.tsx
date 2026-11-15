@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { CalendarDays } from "lucide-react";
 import { MONTHS, daysInMonth, describeDay, longDate } from "../../lib/days";
 import type { DayData } from "../../types";
@@ -7,9 +6,8 @@ export const SECTIONS = [
   { n: 1, label: "Entén", text: "Entén el sistema energètic del campus." },
   { n: 2, label: "Juga", text: "Pren decisions com la persona responsable de la bateria." },
   { n: 3, label: "Analitza", text: "Descobreix com les dades i els algorismes redueixen emissions i costos." },
-  { n: 4, label: "Comunitat", text: "Amb la tecnologia sola no n'hi ha prou." },
-  { n: 5, label: "Repte del dia", text: "Un dia designat, igual per a tothom." },
-  { n: 6, label: "Solver", text: "Rolling horizon i generador d'escenaris." },
+  { n: 4, label: "Solver", text: "Com decideix l'agent quan no coneix el futur." },
+  { n: 5, label: "Comunitat", text: "Amb la tecnologia sola no n'hi ha prou." },
 ];
 
 const base = import.meta.env.BASE_URL;
@@ -22,24 +20,22 @@ interface Props {
   setDate: (m: number, d: number) => void;
   day: DayData;
   exact: boolean;
-  /** Seccions 5 i 6 no fan servir el dia de la barra lateral */
+  /** La secció Solver no fa servir el dia de la barra lateral */
   hideDate?: boolean;
 }
 
-/** Barra lateral: marca, tria del dia (dia i mes) i pestanyes de les seccions 1–6. */
+/** Barra lateral: marca, tria del dia (dia i mes) i pestanyes de les seccions 1–5. */
 export default function Sidebar({ active, setActive, month, dayOfMonth, setDate, day, exact, hideDate = false }: Props) {
-  const [upcOk, setUpcOk] = useState(true);
   const desc = describeDay(day);
   const maxD = daysInMonth(month);
 
   return (
     <aside className="sidebar">
       <div className="side-brand">
-        {upcOk ? (
-          <img src={`${base}brand/logo-upc.svg`} alt="Universitat Politècnica de Catalunya" className="brand-upc" onError={() => setUpcOk(false)} />
-        ) : (
+        <span className="brand-upc-group">
+          <img src={`${base}brand/logo-upc.png`} alt="" className="brand-upc-logo" />
           <span className="brand-upc-text">UPC</span>
-        )}
+        </span>
         <img src={`${base}brand/upc-sostenible.png`} alt="UPC Sostenible" className="brand-sos" />
       </div>
       <p className="side-title">Energia al Campus Nord</p>
