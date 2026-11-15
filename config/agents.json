@@ -1,0 +1,23 @@
+{
+  "default_mode": "dificil",
+  "agents": {
+    "estandar": {
+      "enabled": true,
+      "label": "Estándar",
+      "description": "MPC de 24 horas; batería de 2.000 kWh y ±500 kW.",
+      "score_reference": 6.43,
+      "agent_file": "agents/estandar/agent.py",
+      "module_prefix": "_estandar",
+      "battery": {"capacity_kwh":2000,"power_kw":500,"efficiency":0.9,"soc_init":0.5,"soc_min":0,"soc_max":1,"dt_hours":1,"forecast_horizon":24}
+    },
+    "dificil": {
+      "enabled": true,
+      "label": "Difícil (LASSO online)",
+      "description": "LASSO por horizonte y corrección solar online; batería de 6.000 kWh y ±1.500 kW.",
+      "score_reference": 22.94,
+      "agent_file": "agents/dificil/agent.py",
+      "module_prefix": "_dificil",
+      "battery": {"capacity_kwh":6000,"power_kw":1500,"efficiency":0.9,"soc_init":0.5,"soc_min":0,"soc_max":1,"dt_hours":1,"forecast_horizon":3}
+    }
+  }
+}
