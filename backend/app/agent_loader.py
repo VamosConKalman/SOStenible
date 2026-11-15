@@ -14,11 +14,12 @@ import sys
 import threading
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]  # repo root (backend/..)
+from app.agent_config import AGENTS, ENABLED_AGENTS, ROOT
 
 MODE_SPECS = {
-    "estandar": {"agent_file": ROOT / "agents" / "estandar" / "agent.py", "prefix": "_estandar"},
-    "dificil": {"agent_file": ROOT / "agents" / "dificil" / "agent.py", "prefix": "_dificil"},
+    mode: {"agent_file": (ROOT / spec["agent_file"]).resolve(),
+           "prefix": spec.get("module_prefix", f"_{mode}")}
+    for mode, spec in ENABLED_AGENTS.items()
 }
 
 # Helper modules an agent may import by their generic name
@@ -44,7 +45,9 @@ def load_agent_module(mode: str):
     with _lock:
         if mode in _modules:
             return _modules[mode]
-        cfg = MODE_SPECS[mode]
+        cfg = MODE_SPECS.get(mode)
+        if cfg is None:
+            raise ValueError(f"Agent '{mode}' is disabled or unknown. Available: {', '.join(MODE_SPECS)}")
         agent_file: Path = cfg["agent_file"]
         if not agent_file.exists():
             raise FileNotFoundError(f"Agent file not found: {agent_file}")
@@ -79,7 +82,9 @@ def load_agent_class(mode: str):
 
 def load_parametres(mode: str) -> dict:
     """Load parametres.json from the agent's directory."""
-    param_file = MODE_SPECS[mode]["agent_file"].parent / "parametres.json"
+    if mode not in AGENTS:
+        raise KeyError(f"Unknown agent mode: {mode}")
+    param_file = (ROOT / AGENTS[mode]["agent_file"]).resolve().parent / "parametres.json"
     if param_file.exists():
         return json.loads(param_file.read_text())
     return {}
