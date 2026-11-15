@@ -21,28 +21,8 @@ with open(ROOT / "starter_kit" / "battery_spec.json") as f:
     _DEFAULT_SPEC = json.load(f)
 
 # Battery specs for each mode
-MODE_SPECS = {
-    "estandar": {
-        "capacity_kwh": 2000,
-        "power_kw": 500,
-        "efficiency": 0.9,
-        "soc_init": 0.5,
-        "soc_min": 0,
-        "soc_max": 1,
-        "dt_hours": 1,
-        "forecast_horizon": 24,
-    },
-    "dificil": {
-        "capacity_kwh": 6000,
-        "power_kw": 1500,
-        "efficiency": 0.9,
-        "soc_init": 0.5,
-        "soc_min": 0,
-        "soc_max": 1,
-        "dt_hours": 1,
-        "forecast_horizon": 3,
-    },
-}
+from app.agent_config import ENABLED_AGENTS
+MODE_SPECS = {mode: dict(spec["battery"]) for mode, spec in ENABLED_AGENTS.items()}
 
 
 class DificilEnv(CampusBatteryEnv):
