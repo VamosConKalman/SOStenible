@@ -1,0 +1,14 @@
+{
+  "kappa": 0.587335,
+  "q": 0.3,
+  "v_coef": null,
+  "eps": 0.5,
+  "delta": 1e-06,
+  "w_co2": 0.7,
+  "w_cost": 0.3,
+  "use_forecaster": false,
+  "use_measured_net": true,
+  "forecaster_quantile": 0.3,
+  "month_end_horizon": false,
+  "terminal_value": false
+}

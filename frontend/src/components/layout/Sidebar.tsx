@@ -8,6 +8,8 @@ export const SECTIONS = [
   { n: 2, label: "Juga", text: "Pren decisions com la persona responsable de la bateria." },
   { n: 3, label: "Analitza", text: "Descobreix com les dades i els algorismes redueixen emissions i costos." },
   { n: 4, label: "Comunitat", text: "Amb la tecnologia sola no n'hi ha prou." },
+  { n: 5, label: "Repte del dia", text: "Un dia designat, igual per a tothom." },
+  { n: 6, label: "Solver", text: "Rolling horizon i generador d'escenaris." },
 ];
 
 const base = import.meta.env.BASE_URL;
@@ -20,10 +22,12 @@ interface Props {
   setDate: (m: number, d: number) => void;
   day: DayData;
   exact: boolean;
+  /** Seccions 5 i 6 no fan servir el dia de la barra lateral */
+  hideDate?: boolean;
 }
 
-/** Barra lateral: marca, tria del dia (dia i mes) i pestanyes de les seccions 1–4. */
-export default function Sidebar({ active, setActive, month, dayOfMonth, setDate, day, exact }: Props) {
+/** Barra lateral: marca, tria del dia (dia i mes) i pestanyes de les seccions 1–6. */
+export default function Sidebar({ active, setActive, month, dayOfMonth, setDate, day, exact, hideDate = false }: Props) {
   const [upcOk, setUpcOk] = useState(true);
   const desc = describeDay(day);
   const maxD = daysInMonth(month);
@@ -40,6 +44,11 @@ export default function Sidebar({ active, setActive, month, dayOfMonth, setDate,
       </div>
       <p className="side-title">Energia al Campus Nord</p>
 
+      {hideDate ? (
+        <div className="side-date">
+          <p className="fine">{active === 5 ? "El repte del dia té el dia fixat: la tria del dia no s'hi aplica." : "Tria el dia i l'escenari dins del simulador."}</p>
+        </div>
+      ) : (
       <div className="side-date">
         <label className="label" htmlFor="sel-day"><CalendarDays size={14} aria-hidden /> Tria un dia</label>
         <div className="date-inputs">
@@ -58,6 +67,7 @@ export default function Sidebar({ active, setActive, month, dayOfMonth, setDate,
           </p>
         </div>
       </div>
+      )}
 
       <nav className="side-tabs" aria-label="Seccions">
         {SECTIONS.map((s) => (
