@@ -18,6 +18,7 @@ sys.path.insert(0, str(_BACKEND / "starter_kit"))
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.data_loader import (
     build_hourly,
@@ -29,6 +30,7 @@ from app.data_loader import (
     scale_for_mode,
 )
 from app.agent_loader import load_agent_class, load_agent_module, load_parametres
+from app.agent_config import DEFAULT_MODE, public_agent_catalog
 from app.simulator import (MODE_SPECS, SCENARIO_DEFAULTS, instrument_agent_module, run_agent,
                            run_rolling_horizon, run_user_actions, _evaluate)
 from app.models import (
@@ -118,12 +120,20 @@ def _agent_class(mode: str):
 
 
 # ---------------------------------------------------------------------------
+# Agent catalog
+# ---------------------------------------------------------------------------
+@app.get("/api/agents")
+def api_agents():
+    return public_agent_catalog()
+
+
+# ---------------------------------------------------------------------------
 # 1. GET /api/days
 # ---------------------------------------------------------------------------
 
 @app.get("/api/days")
 def api_days(
-    mode: str = Query("dificil", description="estandar | dificil"),
+    mode: str = Query(DEFAULT_MODE, description="Enabled agent id from /api/agents"),
     month: int | None = Query(None, ge=1, le=12),
     year: int | None = Query(None, ge=2020, le=2030),
 ):
@@ -147,7 +157,7 @@ def api_days(
 @app.get("/api/day")
 def api_day(
     date: str = Query(..., description="AAAA-MM-DD"),
-    mode: str = Query("dificil", description="estandar | dificil"),
+    mode: str = Query(DEFAULT_MODE, description="Enabled agent id from /api/agents"),
 ):
     if mode not in MODE_SPECS:
         raise HTTPException(400, f"mode must be 'estandar' or 'dificil', got '{mode}'")
@@ -431,6 +441,11 @@ def _generate_diagnosis(user_result: dict, model_result: dict, hourly: list[Hour
 
 
 # ---------------------------------------------------------------------------
+_FRONTEND_DIST = _BACKEND.parent / "frontend" / "dist"
+if _FRONTEND_DIST.is_dir():
+    app.mount("/", StaticFiles(directory=str(_FRONTEND_DIST), html=True), name="frontend")
+
+
 # Run with: uvicorn app.main:app --reload
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
