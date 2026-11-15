@@ -9,15 +9,16 @@ import DecisionGame, { HOW_TO } from "./components/level2/DecisionGame";
 import StrategyLab from "./components/level3/StrategyLab";
 import CommunityPanel from "./components/level4/CommunityPanel";
 import SimulationPage from "./components/SimulationPage";
-import FixedDayChallenge from "./components/level5/FixedDayChallenge";
-import { type Action, batteryOf } from "./lib/energy";
+import { type Action, batteryOf, runActions } from "./lib/energy";
+import { ArrowLeft, ArrowRight } from "lucide-react";
+import { fmt } from "./theme";
 import { findDay } from "./lib/days";
 import "@fontsource/montserrat/600.css";
 import "@fontsource/montserrat/700.css";
 import "@fontsource/montserrat/800.css";
 import "./App.css";
 
-const LAST = 6;
+const LAST = 5;
 
 const fromHash = () => {
   const n = Number(window.location.hash.replace("#", ""));
@@ -32,7 +33,6 @@ export default function App() {
   const [active, setActiveState] = useState(fromHash);
   const [hour, setHour] = useState(12);
   const [actions, setActions] = useState<Action[]>([]);
-  const [solverDate, setSolverDate] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     const onHash = () => setActiveState(fromHash());
@@ -53,10 +53,11 @@ export default function App() {
   if (!data || !day || !bat || !picked) return <div className="state">Carregant l'energia del campus...</div>;
 
   const setDate = (m: number, d: number) => { setMonth(m); setDom(d); setActions([]); };
+  const socNow = actions.length ? (100 * runActions(day, bat, actions).soc[actions.length - 1]) / bat.cap : (100 * bat.soc0) / bat.cap;
 
   return (
     <div className="shell">
-      <Sidebar active={active} setActive={setActive} month={month} dayOfMonth={dom} setDate={setDate} day={day} exact={picked.exact} hideDate={active >= 5} />
+      <Sidebar active={active} setActive={setActive} month={month} dayOfMonth={dom} setDate={setDate} day={day} exact={picked.exact} hideDate={active === 4} />
 
       <main className="content">
         {active === 1 && (
@@ -81,45 +82,37 @@ export default function App() {
         {active === 2 && (
           <section className="section">
             <SectionHeader n={2} title="Juga a ser el gestor energètic" help={HOW_TO}
-              question="Són les 00:00 i la bateria és a mig carregar. Què faries tu, hora a hora?" />
+              question={actions.length < 24
+                ? `Són les ${day.hours[actions.length]} i la bateria és al ${fmt.int(socNow)} %. Què faries tu, hora a hora?`
+                : "Has gestionat el campus durant tot el dia: mira el resultat final."} />
             <DecisionGame key={day.id} day={day} bat={bat} actions={actions} setActions={setActions} onAnalyse={() => setActive(3)} />
           </section>
         )}
 
         {active === 3 && (
           <section className="section">
-            <SectionHeader n={3} title="Pensa com un científic de dades" question="Com de bona ha estat la teva estratègia comparada amb una regla simple i amb el model?" />
+            <SectionHeader n={3} title="Pensa com un expert" question="Com de bona ha estat la teva estratègia comparada amb una regla simple i amb el model?" />
             <StrategyLab day={day} bat={bat} actions={actions} />
             <AnnualBanner data={data} />
           </section>
         )}
 
         {active === 4 && (
-          <section className="section">
-            <SectionHeader n={4} title="Què faria la comunitat universitària de la UPC?" question="Amb la tecnologia sola no n'hi ha prou: la transició energètica també depèn de com fem servir l'energia les persones." />
-            <CommunityPanel key={day.id} day={day} days={data.days} />
+          <section className="section sim-section">
+            <SimulationPage />
           </section>
         )}
 
         {active === 5 && (
           <section className="section">
-            <SectionHeader n={5} title="Repte del dia" help={HOW_TO}
-              question="Un dia ja triat, igual per a tothom: entén-lo, juga'l i compara't amb el model." />
-            <FixedDayChallenge data={data} bat={bat} onOpenSolver={(d) => { setSolverDate(d); setActive(6); }} />
-          </section>
-        )}
-
-        {active === 6 && (
-          <section className="section sim-section">
-            <SimulationPage key={solverDate ?? "auto"} initialDate={solverDate} />
+            <SectionHeader n={5} title="Què faria la comunitat universitària de la UPC?" question="Amb la tecnologia sola no n'hi ha prou: la transició energètica també depèn de com fem servir l'energia les persones." />
+            <CommunityPanel key={day.id} day={day} days={data.days} />
           </section>
         )}
 
         <nav className="pager" aria-label="Navegació entre seccions">
-          {active > 1 ? <button className="btn-soft" onClick={() => setActive(active - 1)}>← {active - 1}</button> : <span />}
-          {active < LAST ? <button className="btn-solid" onClick={() => setActive(active + 1)}>Següent: {active + 1} →</button> : (
-            <button className="btn-solid" onClick={() => setActive(1)}>Tornar a l'inici →</button>
-          )}
+          {active > 1 ? <button className="btn-soft btn-arrow" onClick={() => setActive(active - 1)} aria-label="Secció anterior"><ArrowLeft size={20} /></button> : <span />}
+          {active < LAST ? <button className="btn-solid btn-arrow" onClick={() => setActive(active + 1)} aria-label="Secció següent"><ArrowRight size={20} /></button> : <span />}
         </nav>
 
         <Methodology data={data} />
