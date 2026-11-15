@@ -6,6 +6,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.agent_config import DEFAULT_MODE
+
 
 # ---------------------------------------------------------------------------
 # Requests
@@ -13,12 +15,12 @@ from pydantic import BaseModel, Field
 
 class DayRequest(BaseModel):
     date: str
-    mode: Literal["estandar", "dificil"] = "dificil"
+    mode: Literal["estandar", "dificil"] = DEFAULT_MODE
 
 
 class CompareRequest(BaseModel):
     date: str
-    mode: Literal["estandar", "dificil"] = "dificil"
+    mode: Literal["estandar", "dificil"] = DEFAULT_MODE
     userActions: list[float | str]
 
 
@@ -46,7 +48,7 @@ class ScenarioParams(BaseModel):
 
 class RollingHorizonRequest(BaseModel):
     date: str
-    mode: Literal["estandar", "dificil"] = "dificil"
+    mode: Literal["estandar", "dificil"] = DEFAULT_MODE
     scenario: ScenarioParams = Field(default_factory=ScenarioParams)
     nSamples: int = Field(1, ge=1, le=30)
     activeSeed: int | None = Field(None, ge=0, le=10_100)   # scenario shown step by step
