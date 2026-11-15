@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Pause, Play, RotateCcw } from "lucide-react";
 import { C, fmt } from "../theme";
 import BatteryIcon, { type BatMode, MOOD_TXT, moodOf } from "./BatteryIcon";
-import { useDay, useDays, useModelDay, useCompare, type Mode } from "../api/hooks";
+import { useAgents, useDay, useDays, useModelDay, useCompare, type Mode } from "../api/hooks";
 import RollingHorizonDashboard from "./rolling/RollingHorizonDashboard";
 
 // ---------------------------------------------------------------------------
@@ -44,15 +44,6 @@ const LAND: Record<Season, { sky: string; lawn: string; tree: string; tree2: str
 };
 
 // ---------------------------------------------------------------------------
-// Mode selector
-// ---------------------------------------------------------------------------
-
-const MODES: { key: Mode; label: string; desc: string }[] = [
-  { key: "estandar", label: "Estàndard", desc: "Bateria 2 MWh, ±500 kW, preus i CO₂ completament coneguts" },
-  { key: "dificil", label: "Difícil", desc: "Bateria 6 MWh, ±1.500 kW, només 3 h de previsió de preu/CO₂ + meteo" },
-];
-
-// ---------------------------------------------------------------------------
 // Component: SimulationPage
 // ---------------------------------------------------------------------------
 
@@ -66,25 +57,25 @@ function SimulatorGame() {
   const [userDecisions, setUserDecisions] = useState<Record<number, DecAction>>({});
 
   // --- API hooks ---
+  const { agents, defaultMode, loading: agentsLoading, error: agentsError } = useAgents();
+  const activeAgent = agents.find((agent) => agent.id === mode) ?? agents[0];
+  const powerLimit = activeAgent?.power_kw ?? (mode === "dificil" ? 1500 : 500);
+  const batteryCapacity = activeAgent?.capacity_kwh ?? (mode === "dificil" ? 6000 : 2000);
   const { days, loading: daysLoading } = useDays(mode);
   const { day, loading: dayLoading, error: dayError } = useDay(selectedDate, mode);
   const { result: modelResult, run: runModel } = useModelDay();
   const { result: compareResult, run: runCompare, reset: resetCompare } = useCompare();
+
+  useEffect(() => {
+    if (agents.some((agent) => agent.id === defaultMode)) setMode(defaultMode);
+  }, [agents, defaultMode]);
 
   // --- Derived values ---
   const currentHour = hour;
   const userAction = userDecisions[currentHour] ?? null;
   const modelAction = modelResult?.actions[currentHour] ?? null;
   const modelPower = modelResult?.power[currentHour] ?? 0;
-  const userPower = (() => {
-    if (userAction === "carga") return modelResult
-      ? Math.min(modelResult.power.reduce((m, v) => Math.max(m, v), 0), mode === "dificil" ? 1500 : 500)
-      : 500;
-    if (userAction === "descarga") return modelResult
-      ? Math.min(-modelResult.power.reduce((m, v) => Math.min(m, v), 0), mode === "dificil" ? -1500 : -500)
-      : -500;
-    return 0;
-  })();
+  const userPower = userAction === "carga" ? powerLimit : userAction === "descarga" ? -powerLimit : 0;
 
   const gameDone = Object.keys(userDecisions).length >= 24;
 
@@ -150,8 +141,8 @@ function SimulatorGame() {
   const dem = day ? day.demand[currentHour] : 0;
   const solar = day ? Math.min(day.solar[currentHour], dem) : 0;
   const grid = day ? Math.max(0, dem - solar) : 0;
-  const socPct = day && modelResult ? (modelResult.soc[currentHour] / (mode === "dificil" ? 6000 : 2000)) * 100 : 50;
-  const batMode = (mode === "dificil" ? "dificil" : "estandar") as BatMode;
+  const socPct = day && modelResult ? (modelResult.soc[currentHour] / batteryCapacity) * 100 : 50;
+  const batMode: BatMode = modelPower > 1 ? "charge" : modelPower < -1 ? "discharge" : "idle";
 
   const minD = day ? Math.min(...day.demand) : 0;
   const maxD = day ? Math.max(...day.demand) : 1;
@@ -221,14 +212,16 @@ function SimulatorGame() {
         <h2>🔋 Simulador interactiu</h2>
         <p className="fine">Gestiona la bateria del campus hora a hora i compara les teves decisions amb l'agent del datathon.</p>
         <div className="mode-selector">
-          {MODES.map((m) => (
+          {agentsLoading && <p className="muted">Cargando agentes disponibles…</p>}
+          {agentsError && <p className="muted" style={{ color: "var(--bad)" }}>No se pudo cargar el catálogo: {agentsError}</p>}
+          {!agentsLoading && !agentsError && agents.map((agent) => (
             <button
-              key={m.key}
-              className={`mode-btn ${mode === m.key ? "on" : ""}`}
-              onClick={() => { setMode(m.key); setSelectedDate(""); setUserDecisions({}); setPlaying(false); resetCompare(); }}
+              key={agent.id}
+              className={`mode-btn ${mode === agent.id ? "on" : ""}`}
+              onClick={() => { setMode(agent.id); setSelectedDate(""); setUserDecisions({}); setPlaying(false); resetCompare(); }}
             >
-              <b>{m.label}</b>
-              <small>{m.desc}</small>
+              <b>{agent.label}</b>
+              <small>{agent.description}</small>
             </button>
           ))}
         </div>
