@@ -56,10 +56,7 @@ export interface CompareResult {
 
 export type Mode = "estandar" | "dificil";
 
-export interface AgentOption {
-  id: Mode; label: string; description: string; score_reference: number | null;
-  capacity_kwh: number; power_kw: number; forecast_horizon: number;
-}
+export interface AgentOption { id: Mode; label: string; description: string; score_reference: number | null; capacity_kwh: number; power_kw: number; forecast_horizon: number; }
 export interface AgentCatalog { default_mode: Mode; agents: AgentOption[]; }
 
 export const MODE_LABELS: Record<Mode, string> = {
