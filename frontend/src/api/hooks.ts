@@ -3,19 +3,13 @@ import type { AgentCatalog, DayListItem, DayData, ModelDayResult, CompareResult,
 
 const API = "/api";
 
-// ---------------------------------------------------------------------------
-// GET /api/agents
-// ---------------------------------------------------------------------------
 export function useAgents() {
   const [catalog, setCatalog] = useState<AgentCatalog | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
-    fetch(`${API}/agents`)
-      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-      .then((data: AgentCatalog) => setCatalog(data))
-      .catch((e) => setError(String(e)))
-      .finally(() => setLoading(false));
+    fetch(`${API}/agents`).then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      .then((data: AgentCatalog) => setCatalog(data)).catch((e) => setError(String(e))).finally(() => setLoading(false));
   }, []);
   return { agents: catalog?.agents ?? [], defaultMode: catalog?.default_mode ?? "dificil", loading, error };
 }
